@@ -39,3 +39,9 @@ secrets.json
 *.swp
 *.swo
 *.bak
+
+# IDEA
+.idea/
+*.iml
+*.iws
+.idea_modules/
