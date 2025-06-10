@@ -330,24 +330,21 @@ class VisionTransformer(BaseBackbone):
 
         for i, blk in enumerate(self.blocks):
             # shared representations enhance
+            x_blk = x
+            x_enhance = x
             if i <= self.grl_index - 1:
                 # blk和self.shared_adapter[i]并行对x进行处理
-                x_blk = blk(x)
-                x_enhance = self.shared_adapter[i](x)
-                x = x_enhance + x_blk
+                x_blk = blk(x_blk)
+                x_enhance = self.shared_adapter[i](x_enhance)
                 if i == self.grl_index - 1 and self.grl:
                     x_cls = x_enhance.clone()
-                    # 梯度截断
-                    if not infer:
-                        x_cls = x_cls + x_blk.detach()
-                    else:
-                        x_cls = x_cls + x_blk
                     feat_cls_z = token2feature(x_cls[:, :lens_z, :])
                     feat_cls_x = token2feature(x_cls[:, lens_z:, :])
                     feat_cls_z = self.grl(feat_cls_z)
                     feat_cls_x = self.grl(feat_cls_x)
                     weight_raw_z = self.classifier(feat_cls_z)
                     weight_raw_x = self.classifier(feat_cls_x)
+                    x = x_blk + x_enhance
             # specific representations enhance
             else:
                 x = blk(x)

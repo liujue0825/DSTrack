@@ -100,24 +100,10 @@ class LTRTrainer(BaseTrainer):
 
                     # debug
                     for name, param in self.actor.net.named_parameters():
-                        if param.grad is None:
+                        # name 以 backbone 开头
+                        if param.grad is None and name.startswith("backbone"):
                             print("The None grad model is:")
                             print(name)
-
-                    # # 检查blk参数是否无梯度
-                    # print("blk参数梯度:")
-                    # for name, param in blk.named_parameters():
-                    #     print(f"{name}: {param.grad is not None}")  # 应为False
-                    #
-                    # # 检查shared_adapter参数是否有梯度
-                    # print("shared_adapter参数梯度:")
-                    # for name, param in self.shared_adapter[i].named_parameters():
-                    #     print(f"{name}: {param.grad is not None}")  # 应为True
-                    #
-                    # # 检查classifier参数是否有梯度
-                    # print("classifier参数梯度:")
-                    # for name, param in self.classifier.named_parameters():
-                    #     print(f"{name}: {param.grad is not None}")  # 应为True
 
                     if self.settings.grad_clip_norm > 0:
                         torch.nn.utils.clip_grad_norm_(self.actor.net.parameters(), self.settings.grad_clip_norm)
