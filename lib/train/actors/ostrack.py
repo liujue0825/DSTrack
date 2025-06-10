@@ -125,11 +125,12 @@ class OSTrackActor(BaseActor):
         cls_loss_x = self.objective['cls'](pred_dict['weight_x'], gt_dict['search_label'].view(-1, 1))
         cls_loss_z = self.objective['cls'](pred_dict['weight_z'], gt_dict['template_label'].view(-1, 1))
         cls_loss = (cls_loss_x + cls_loss_z) / 2
+        loss = cls_loss
 
         # weighted sum
-        task_loss = self.loss_weight['giou'] * giou_loss + self.loss_weight['l1'] * l1_loss + self.loss_weight[
-            'focal'] * location_loss
-        loss = task_loss + cls_loss
+        # task_loss = self.loss_weight['giou'] * giou_loss + self.loss_weight['l1'] * l1_loss + self.loss_weight[
+        #     'focal'] * location_loss
+        # loss = task_loss + cls_loss
 
         if return_status:
             # status for log

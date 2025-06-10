@@ -11,4 +11,4 @@ Official PyTorch implementation of "Cross-Modal Object Tracking via Domain-Adver
 
 # 待验证
 1. 要求blk和self.shared_adapter[i]的反向传播的梯度分离开，也就是说blk会被一个loss优化，而self.shared_adapter[i]会被另一个loss进行优化
-2. 
+2. 这里的1-6层的并行是完全并行开的，只在最后一层进行融合
