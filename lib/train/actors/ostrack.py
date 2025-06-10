@@ -40,18 +40,6 @@ class OSTrackActor(BaseActor):
         """
         self.net.backbone.grl.update_alpha(epoch)
         print(f"In epoch-{epoch}, GRL alpha updated to {self.net.backbone.grl.current_alpha}")
-    
-    def save_feat(self, epoch):
-        """
-        在指定的epoch结束时持久化特征
-        """
-        self.net.backbone.clear_feat()
-        # 拼接所有批次的特征
-        all_feat_rgb = np.vstack(self.net.backbone.feat_rgb)
-        all_feat_nir = np.vstack(self.net.backbone.feat_nir)
-        np.save(f"/DATA/liujue/DSTrack/data/rgb_feat_epoch_{epoch}.npy", all_feat_rgb)
-        np.save(f"/DATA/liujue/DSTrack/data/nir_feat_epoch_{epoch}.npy", all_feat_nir)
-        print(f"Saved epoch {epoch} features: rgb:{all_feat_rgb.shape}, nir:{all_feat_nir.shape}")
 
     def forward_pass(self, data):
         # currently only support 1 template and 1 search region

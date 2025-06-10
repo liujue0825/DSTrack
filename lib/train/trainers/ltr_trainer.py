@@ -99,10 +99,25 @@ class LTRTrainer(BaseTrainer):
                     loss.backward()
 
                     # debug
-                    # for name, param in self.actor.net.named_parameters():
-                    #     if param.grad is None:
-                    #         print("The None grad model is:")
-                    #         print(name)
+                    for name, param in self.actor.net.named_parameters():
+                        if param.grad is None:
+                            print("The None grad model is:")
+                            print(name)
+
+                    # # 检查blk参数是否无梯度
+                    # print("blk参数梯度:")
+                    # for name, param in blk.named_parameters():
+                    #     print(f"{name}: {param.grad is not None}")  # 应为False
+                    #
+                    # # 检查shared_adapter参数是否有梯度
+                    # print("shared_adapter参数梯度:")
+                    # for name, param in self.shared_adapter[i].named_parameters():
+                    #     print(f"{name}: {param.grad is not None}")  # 应为True
+                    #
+                    # # 检查classifier参数是否有梯度
+                    # print("classifier参数梯度:")
+                    # for name, param in self.classifier.named_parameters():
+                    #     print(f"{name}: {param.grad is not None}")  # 应为True
 
                     if self.settings.grad_clip_norm > 0:
                         torch.nn.utils.clip_grad_norm_(self.actor.net.parameters(), self.settings.grad_clip_norm)
@@ -127,10 +142,6 @@ class LTRTrainer(BaseTrainer):
                 if self.settings.local_rank in [-1, 0]:
                     self.wandb_writer.write_log(self.stats, self.epoch)
 
-        # NOTE: save epoch
-        if self.epoch in [1, 5, 10, 15, 20]:
-            self.actor.save_feat(self.epoch)
-        
         # calculate ETA after every epoch
         epoch_time = self.prev_time - self.start_time
         print("Epoch Time: " + str(datetime.timedelta(seconds=epoch_time)))

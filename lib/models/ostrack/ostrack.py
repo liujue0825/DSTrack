@@ -24,7 +24,8 @@ class OSTrack(nn.Module):
         """
         super().__init__()
         self.backbone = transformer
-        self.backbone.set_grad_reverse(grl)  # 设置动态的 GRL
+        # 设置动态的 GRL
+        self.backbone.set_grad_reverse(grl)
 
         self.box_head = box_head
 

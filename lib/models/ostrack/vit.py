@@ -268,25 +268,22 @@ class VisionTransformer(BaseBackbone):
             for i in range(depth)])
         self.norm = norm_layer(embed_dim)
 
-        # NOTE: domain discriminator
         self.grl_index = grl_index
+        # NOTE: shared adapter
+        self.shared_adapter = nn.Sequential(*[
+            Block(
+                dim=embed_dim, num_heads=num_heads, mlp_ratio=mlp_ratio, qkv_bias=qkv_bias, drop=drop_rate,
+                attn_drop=attn_drop_rate, drop_path=dpr[i], norm_layer=norm_layer, act_layer=act_layer)
+            for i in range(grl_index)])
         self.classifier = ModalityClassifier(input_dim=embed_dim, hidden_dim=embed_dim // 4, output_dim=1, num_layers=3)
         self.grl = None
 
-        # NOTE: adapter blocks
+        # NOTE: switchable adapter
         adapter_nums = depth - self.grl_index
         self.rgb_adapter = nn.Sequential(*[AdapterBlock(in_channels=embed_dim) for _ in range(adapter_nums)])
         self.nir_adapter = nn.Sequential(*[AdapterBlock(in_channels=embed_dim) for _ in range(adapter_nums)])
 
-        # TODO: 重构模型架构
         self.init_weights(weight_init)
-        self.feat_rgb = []
-        self.feat_nir = []
-    
-    def clear_feat(self):
-        # 清空feat集合
-        self.feat_rgb = []
-        self.feat_nir = []
 
     def set_grad_reverse(self, grl):
         """
@@ -332,29 +329,27 @@ class VisionTransformer(BaseBackbone):
         lens_x = self.pos_embed_x.shape[1]
 
         for i, blk in enumerate(self.blocks):
+            # shared representations enhance
             if i <= self.grl_index - 1:
-                x = blk(x)
+                # blk和self.shared_adapter[i]并行对x进行处理
+                x_blk = blk(x)
+                x_enhance = self.shared_adapter[i](x)
+                x = x_enhance + x_blk
                 if i == self.grl_index - 1 and self.grl:
-                    x_cls = x.clone()
+                    x_cls = x_enhance.clone()
+                    # 梯度截断
+                    if not infer:
+                        x_cls = x_cls + x_blk.detach()
+                    else:
+                        x_cls = x_cls + x_blk
                     feat_cls_z = token2feature(x_cls[:, :lens_z, :])
                     feat_cls_x = token2feature(x_cls[:, lens_z:, :])
                     feat_cls_z = self.grl(feat_cls_z)
                     feat_cls_x = self.grl(feat_cls_x)
                     weight_raw_z = self.classifier(feat_cls_z)
                     weight_raw_x = self.classifier(feat_cls_x)
-                    if infer:
-                        with open("/DATA/liujue/resource/predict.txt", 'a') as f:
-                            f.write(f"{weight_raw_x.sigmoid().view(-1).item()}\n")
-                    else:
-                        # NOTE: 保存特征
-                        mask_nir_x = search_label.bool().view(-1)
-                        mask_rgb_x = ~mask_nir_x
-                        self.feat_rgb.append(feat_cls_x[mask_rgb_x])
-                        self.feat_nir.append(feat_cls_x[mask_nir_x])
+            # specific representations enhance
             else:
-                # 梯度截断
-                if i == self.grl_index and self.grl:
-                    x = x.detach()
                 x = blk(x)
                 x_encoder = x
                 z_feat = token2feature(x[:, :lens_z, :])
