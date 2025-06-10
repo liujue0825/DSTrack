@@ -278,6 +278,7 @@ class VisionTransformer(BaseBackbone):
         self.rgb_adapter = nn.Sequential(*[AdapterBlock(in_channels=embed_dim) for _ in range(adapter_nums)])
         self.nir_adapter = nn.Sequential(*[AdapterBlock(in_channels=embed_dim) for _ in range(adapter_nums)])
 
+        # TODO: 重构模型架构
         self.init_weights(weight_init)
         self.feat_rgb = []
         self.feat_nir = []
