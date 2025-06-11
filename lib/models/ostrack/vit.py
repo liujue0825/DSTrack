@@ -344,13 +344,16 @@ class VisionTransformer(BaseBackbone):
                     feat_cls_x = self.grl(feat_cls_x)
                     weight_raw_z = self.classifier(feat_cls_z)
                     weight_raw_x = self.classifier(feat_cls_x)
+                # 整个blk分支和整个shared_adapter分支并行
+                if i == self.grl_index - 1:
                     x = x_blk + x_enhance
             # specific representations enhance
             else:
-                x = blk(x)
-                x_encoder = x
-                z_feat = token2feature(x[:, :lens_z, :])
-                x_feat = token2feature(x[:, lens_z:, :])  # B, 256, 768 -> B, 768, 16, 16
+                x_blk = x
+                x_enhance = x
+                x_blk = blk(x_blk)
+                z_feat = token2feature(x_enhance[:, :lens_z, :])
+                x_feat = token2feature(x_enhance[:, lens_z:, :])  # B, 256, 768 -> B, 768, 16, 16
                 z_enhance_feat = torch.zeros_like(z_feat)
                 x_enhance_feat = torch.zeros_like(x_feat)
                 # 训练阶段: 用模态标签监督两个分支的训练
@@ -385,7 +388,8 @@ class VisionTransformer(BaseBackbone):
                 z_enhance_tokens = feature2token(z_enhance_feat)
                 x_enhance_tokens = feature2token(x_enhance_feat)
                 x_enhance = combine_tokens(z_enhance_tokens, x_enhance_tokens, mode=self.cat_mode)
-                x = x_enhance + x_encoder
+                # 单个encoder和adapter并行
+                x = x_enhance + x_blk
 
         x = recover_tokens(x, lens_z, lens_x, mode=self.cat_mode)
 
