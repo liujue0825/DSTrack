@@ -328,35 +328,34 @@ class VisionTransformer(BaseBackbone):
         lens_z = self.pos_embed_z.shape[1]
         lens_x = self.pos_embed_x.shape[1]
 
+        x_blk = x.clone()
+        x_share = x.clone()
         for i, blk in enumerate(self.blocks):
             # shared representations enhance
-            x_blk = x
-            x_enhance = x
             if i <= self.grl_index - 1:
-                # blk和self.shared_adapter[i]并行对x进行处理
+                # 整个blk分支和整个shared_adapter分支并行
                 x_blk = blk(x_blk)
-                x_enhance = self.shared_adapter[i](x_enhance)
+                x_share = self.shared_adapter[i](x_share)
                 if i == self.grl_index - 1 and self.grl:
-                    x_cls = x_enhance.clone()
+                    x_cls = x_share.clone()
                     feat_cls_z = token2feature(x_cls[:, :lens_z, :])
                     feat_cls_x = token2feature(x_cls[:, lens_z:, :])
                     feat_cls_z = self.grl(feat_cls_z)
                     feat_cls_x = self.grl(feat_cls_x)
                     weight_raw_z = self.classifier(feat_cls_z)
                     weight_raw_x = self.classifier(feat_cls_x)
-                # 整个blk分支和整个shared_adapter分支并行
-                if i == self.grl_index - 1:
-                    # 截断梯度，防止任务loss优化shared_adapter
-                    x = x_blk + x_enhance.detach()
             # specific representations enhance
             else:
+                # 截断梯度，防止任务loss优化shared_adapter
+                if i == self.grl_index and self.grl:
+                    x = x_blk + x_share.detach()
                 x_blk = x
-                x_enhance = x
+                x_specific = x
                 x_blk = blk(x_blk)
-                z_feat = token2feature(x_enhance[:, :lens_z, :])
-                x_feat = token2feature(x_enhance[:, lens_z:, :])  # B, 256, 768 -> B, 768, 16, 16
-                z_enhance_feat = torch.zeros_like(z_feat)
-                x_enhance_feat = torch.zeros_like(x_feat)
+                z_feat = token2feature(x_specific[:, :lens_z, :])
+                x_feat = token2feature(x_specific[:, lens_z:, :])  # B, 256, 768 -> B, 768, 16, 16
+                z_specific_feat = torch.zeros_like(z_feat)
+                x_specific_feat = torch.zeros_like(x_feat)
                 # 训练阶段: 用模态标签监督两个分支的训练
                 if not infer:
                     # 根据模态标签决定数据流向
@@ -364,7 +363,7 @@ class VisionTransformer(BaseBackbone):
                     mask_rgb_z = ~mask_nir_z
                     mask_nir_x = search_label.bool().view(-1)
                     mask_rgb_x = ~mask_nir_x
-                # 推理阶段: 用模态权重 weight 代替模态标签, 使得输入能正确流向对应的模态分支
+                # 推理阶段: 用模态权重 weight 代替模态标签
                 else:
                     weight_z = weight_raw_z.sigmoid().view(-1)
                     weight_x = weight_raw_x.sigmoid().view(-1)
@@ -376,21 +375,21 @@ class VisionTransformer(BaseBackbone):
                 # 只为需要的样本计算相应的分支
                 if mask_rgb_z.any():
                     rgb_branch_z = self.rgb_adapter[i - self.grl_index](z_feat[mask_rgb_z])
-                    z_enhance_feat[mask_rgb_z] = rgb_branch_z
+                    z_specific_feat[mask_rgb_z] = rgb_branch_z
                 if mask_nir_z.any():
                     nir_branch_z = self.nir_adapter[i - self.grl_index](z_feat[mask_nir_z])
-                    z_enhance_feat[mask_nir_z] = nir_branch_z
+                    z_specific_feat[mask_nir_z] = nir_branch_z
                 if mask_rgb_x.any():
                     rgb_branch_x = self.rgb_adapter[i - self.grl_index](x_feat[mask_rgb_x])
-                    x_enhance_feat[mask_rgb_x] = rgb_branch_x
+                    x_specific_feat[mask_rgb_x] = rgb_branch_x
                 if mask_nir_x.any():
                     nir_branch_x = self.nir_adapter[i - self.grl_index](x_feat[mask_nir_x])
-                    x_enhance_feat[mask_nir_x] = nir_branch_x
-                z_enhance_tokens = feature2token(z_enhance_feat)
-                x_enhance_tokens = feature2token(x_enhance_feat)
-                x_enhance = combine_tokens(z_enhance_tokens, x_enhance_tokens, mode=self.cat_mode)
+                    x_specific_feat[mask_nir_x] = nir_branch_x
+                z_specific_tokens = feature2token(z_specific_feat)
+                x_specific_tokens = feature2token(x_specific_feat)
+                x_specific = combine_tokens(z_specific_tokens, x_specific_tokens, mode=self.cat_mode)
                 # 单个encoder和adapter并行
-                x = x_enhance + x_blk
+                x = x_specific + x_blk
 
         x = recover_tokens(x, lens_z, lens_x, mode=self.cat_mode)
 
