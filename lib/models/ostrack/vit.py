@@ -346,7 +346,8 @@ class VisionTransformer(BaseBackbone):
                     weight_raw_x = self.classifier(feat_cls_x)
                 # 整个blk分支和整个shared_adapter分支并行
                 if i == self.grl_index - 1:
-                    x = x_blk + x_enhance
+                    # 截断梯度，防止任务loss优化shared_adapter
+                    x = x_blk + x_enhance.detach()
             # specific representations enhance
             else:
                 x_blk = x
