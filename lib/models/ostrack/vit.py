@@ -285,6 +285,12 @@ class VisionTransformer(BaseBackbone):
 
         self.init_weights(weight_init)
 
+        # NOTE: for visualization
+        self.shared_feature = None
+
+    def reset_feature(self):
+        self.shared_feature = None
+
     def set_grad_reverse(self, grl):
         """
         在初始化 OSTrack 时设置
@@ -348,6 +354,7 @@ class VisionTransformer(BaseBackbone):
             else:
                 # 截断梯度，防止任务loss优化shared_adapter
                 if i == self.grl_index and self.grl:
+                    self.shared_feature = x_share   # NOTE: for visualization
                     x = x_blk + x_share.detach()
                 x_blk = x
                 x_specific = x

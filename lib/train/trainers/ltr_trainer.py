@@ -72,6 +72,8 @@ class LTRTrainer(BaseTrainer):
 
         # NOTE: 在进行当前 epoch 训练前更新 alpha 的值
         self.actor.grl_update(self.epoch)
+        # NOTE: 保存每轮训练后的shared feature用于可视化
+        self.actor.save_feature(self.epoch)
 
         self._init_timing()
 
@@ -99,11 +101,10 @@ class LTRTrainer(BaseTrainer):
                     loss.backward()
 
                     # debug
-                    for name, param in self.actor.net.named_parameters():
-                        # name 以 backbone 开头
-                        if param.grad is None and name.startswith("backbone"):
-                            print("The None grad model is:")
-                            print(name)
+                    # for name, param in self.actor.net.named_parameters():
+                    #     if param.grad is None:
+                    #         print("The None grad model is:")
+                    #         print(name)
 
                     if self.settings.grad_clip_norm > 0:
                         torch.nn.utils.clip_grad_norm_(self.actor.net.parameters(), self.settings.grad_clip_norm)

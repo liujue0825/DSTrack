@@ -1,4 +1,6 @@
 import torch
+import os
+import numpy as np
 
 from lib.utils.box_ops import box_cxcywh_to_xyxy, box_xywh_to_xyxy
 from . import BaseActor
@@ -40,6 +42,37 @@ class OSTrackActor(BaseActor):
         """
         self.net.backbone.grl.update_alpha(epoch)
         print(f"In epoch-{epoch}, GRL alpha updated to {self.net.backbone.grl.current_alpha}")
+
+    def save_feature(self, epoch):
+        """
+        在每轮epoch开始时将self.net.backbone.shared_feature以npy格式保存在/root/autodl-tmp/DSTrack/data/文件夹下，名称为epoch-{epoch大小}
+        注意因为在第一轮时self.net.backbone.shared_feature是None，因此你需要检查，不能保存None的情况。
+        self.net.backbone.shared_feature本身是一个tensor
+        """
+        # 获取特征张量
+        feature = self.net.backbone.shared_feature
+
+        # 检查是否为None或非张量
+        if feature is None or not isinstance(feature, torch.Tensor):
+            print(f"[Warning] Epoch {epoch}: shared_feature is None or not a tensor, skip saving.")
+            return
+
+        # 创建保存目录（如果不存在）
+        save_dir = "/root/autodl-tmp/DSTrack/data/"
+        os.makedirs(save_dir, exist_ok=True)
+
+        # 构建文件路径
+        filename = f"epoch-{epoch}.npy"
+        file_path = os.path.join(save_dir, filename)
+
+        # 转换为numpy数组并保存
+        try:
+            # 分离计算图+转换CPU+转numpy
+            np.save(file_path, feature.detach().cpu().numpy())
+            print(f"Saved shared_feature for epoch {epoch} to {file_path}")
+        except Exception as e:
+            print(f"[Error] Failed to save feature for epoch {epoch}: {str(e)}")
+        self.net.backbone.reset_feature()
 
     def forward_pass(self, data):
         # currently only support 1 template and 1 search region
@@ -125,12 +158,11 @@ class OSTrackActor(BaseActor):
         cls_loss_x = self.objective['cls'](pred_dict['weight_x'], gt_dict['search_label'].view(-1, 1))
         cls_loss_z = self.objective['cls'](pred_dict['weight_z'], gt_dict['template_label'].view(-1, 1))
         cls_loss = (cls_loss_x + cls_loss_z) / 2
-        loss = cls_loss
 
         # weighted sum
-        # task_loss = self.loss_weight['giou'] * giou_loss + self.loss_weight['l1'] * l1_loss + self.loss_weight[
-        #     'focal'] * location_loss
-        # loss = task_loss + cls_loss
+        task_loss = self.loss_weight['giou'] * giou_loss + self.loss_weight['l1'] * l1_loss + self.loss_weight[
+            'focal'] * location_loss
+        loss = task_loss + cls_loss
 
         if return_status:
             # status for log
