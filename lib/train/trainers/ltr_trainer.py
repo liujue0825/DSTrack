@@ -72,8 +72,6 @@ class LTRTrainer(BaseTrainer):
 
         # NOTE: 在进行当前 epoch 训练前更新 alpha 的值
         self.actor.grl_update(self.epoch)
-        # NOTE: 保存每轮训练后的shared feature用于可视化
-        self.actor.save_feature(self.epoch)
 
         self._init_timing()
 

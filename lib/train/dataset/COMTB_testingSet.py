@@ -93,10 +93,11 @@ class COMTB_testingSet(BaseVideoDataset):
         self.easy_set = set(self.easy_list)
         self.hard_set = set(self.hard_list)
 
+        rgbnir_subset = self.easy_list
         if data_fraction is not None:
-            self.sequence_list = random.sample(self.easy_list, int(len(self.easy_list) * data_fraction))
+            self.sequence_list = random.sample(rgbnir_subset, int(len(rgbnir_subset) * data_fraction))
         else:
-            self.sequence_list = self.easy_list
+            self.sequence_list = rgbnir_subset
 
         # self.sequence_list = ['2']  # for local test
         print(f'Dataset: COMTB_test, seq length: {len(self.sequence_list)}')

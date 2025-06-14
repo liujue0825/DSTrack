@@ -43,37 +43,6 @@ class OSTrackActor(BaseActor):
         self.net.backbone.grl.update_alpha(epoch)
         print(f"In epoch-{epoch}, GRL alpha updated to {self.net.backbone.grl.current_alpha}")
 
-    def save_feature(self, epoch):
-        """
-        在每轮epoch开始时将self.net.backbone.shared_feature以npy格式保存在/root/autodl-tmp/DSTrack/data/文件夹下，名称为epoch-{epoch大小}
-        注意因为在第一轮时self.net.backbone.shared_feature是None，因此你需要检查，不能保存None的情况。
-        self.net.backbone.shared_feature本身是一个tensor
-        """
-        # 获取特征张量
-        feature = self.net.backbone.shared_feature
-
-        # 检查是否为None或非张量
-        if feature is None or not isinstance(feature, torch.Tensor):
-            print(f"[Warning] Epoch {epoch}: shared_feature is None or not a tensor, skip saving.")
-            return
-
-        # 创建保存目录（如果不存在）
-        save_dir = "/root/autodl-tmp/DSTrack/data/"
-        os.makedirs(save_dir, exist_ok=True)
-
-        # 构建文件路径
-        filename = f"epoch-{epoch}.npy"
-        file_path = os.path.join(save_dir, filename)
-
-        # 转换为numpy数组并保存
-        try:
-            # 分离计算图+转换CPU+转numpy
-            np.save(file_path, feature.detach().cpu().numpy())
-            print(f"Saved shared_feature for epoch {epoch} to {file_path}")
-        except Exception as e:
-            print(f"[Error] Failed to save feature for epoch {epoch}: {str(e)}")
-        self.net.backbone.reset_feature()
-
     def forward_pass(self, data):
         # currently only support 1 template and 1 search region
         assert len(data['template_images']) == 1

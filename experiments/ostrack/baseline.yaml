@@ -50,12 +50,12 @@ TRAIN:
   DROP_PATH_RATE: 0.1
   CE_START_EPOCH: 5  # candidate elimination start epoch 1/15
   CE_WARM_EPOCH: 20  # candidate elimination warm up epoch 4/15
-  BATCH_SIZE: 4
+  BATCH_SIZE: 32
   EPOCH: 30
   GIOU_WEIGHT: 2.0
   L1_WEIGHT: 5.0
   GRAD_CLIP_NORM: 0.1
-  LR: 0.0001
+  LR: 0.00004
   LR_DROP_EPOCH: 24  # 4/5
   NUM_WORKER: 10
   OPTIMIZER: ADAMW
@@ -63,12 +63,11 @@ TRAIN:
   SCHEDULER:
     TYPE: step
     DECAY_RATE: 0.1
-  VAL_EPOCH_INTERVAL: 15 # 1/15
+  VAL_EPOCH_INTERVAL: 1 # 1/15
   WEIGHT_DECAY: 0.0001
   AMP: False
   ALPHA: # for grl
-#    DECAY_INIT: 0.005 # 0.001 / 0.005
-    DECAY_INIT: 0.0000001 # 0.0000001 / 0.0000005
+    DECAY_INIT: 0.0000001
     DECAY_MODE: 'step'
     DECAY_EPOCH: 30 # 1/2
     DECAY_RATE: 0.1
